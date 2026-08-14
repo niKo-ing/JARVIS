@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Tailwind</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 flex">
+    <!-- Sidebar -->
+    <div class="bg-gray-800 text-white w-64 flex flex-col min-h-screen">
+        <div class="p-4 text-2xl font-bold border-b border-gray-700">Dashboard</div>
+        <nav class="flex-1 px-4 py-6 space-y-2">
+            <a href="#" class="block py-2 px-4 rounded hover:bg-gray-700">Inicio</a>
+            <a href="#" class="block py-2 px-4 rounded hover:bg-gray-700">Perfil</a>
+            <a href="#" class="block py-2 px-4 rounded hover:bg-gray-700">Ajustes</a>
+        </nav>
+    </div>
+
+    <!-- Main content -->
+    <div class="flex-1 flex flex-col">
+        <header class="bg-white shadow p-4 flex justify-between items-center">
+            <h1 class="text-xl font-semibold">Bienvenido, señor</h1>
+            <button class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Cerrar sesión</button>
+        </header>
+        <main class="p-4 flex-1">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Card 1 -->
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <h2 class="text-lg font-bold mb-2">Tarjeta de Ejemplo 1</h2>
+                    <p class="text-gray-600">Contenido de la tarjeta.</p>
+                </div>
+                <!-- Card 2 -->
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <h2 class="text-lg font-bold mb-2">Tarjeta de Ejemplo 2</h2>
+                    <p class="text-gray-600">Más contenido.</p>
+                </div>
+                <!-- Card 3 -->
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <h2 class="text-lg font-bold mb-2">Tarjeta de Ejemplo 3</h2>
+                    <p class="text-gray-600">Estadísticas rápidas.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

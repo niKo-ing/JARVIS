@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+venv/
+.venv/
+
+# Secrets and local runtime state
+.env
+.env.*
+!.env.example
+config/api_keys.json
+config/certs/
+memory/long_term.json
+notes/
+opencode.json
+
+# Frontend
+webapp/node_modules/
+webapp/dist/
+webapp/.vercel/
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
