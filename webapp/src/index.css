@@ -469,13 +469,21 @@ button {
   border-bottom: 1px solid #1e2935;
 }
 .command-history article:last-child { border: 0; }
-.command-history article > div { display: flex; min-width: 0; flex-direction: column; gap: 4px; }
+.command-history .command-copy { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 4px; }
 .command-history b { overflow: hidden; color: #dce4eb; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .command-history small { color: #6f7d8f; font-size: 10px; }
 .command-status { flex: 0 0 auto; border-radius: 20px; padding: 4px 7px; background: #27303b; color: #9ba6b5; font-size: 9px; font-weight: 800; }
 .command-status.running { background: rgba(251,191,36,.12); color: #fbbf24; }
 .command-status.completed { background: rgba(0,230,118,.1); color: #00e676; }
 .command-status.error { background: rgba(248,113,113,.1); color: #f87171; }
+.command-status.cancelled { background: rgba(148,163,184,.1); color: #94a3b8; }
+.command-remove {
+  display: grid; width: 28px; height: 28px; flex: 0 0 28px; place-items: center;
+  border: 1px solid #2a3542; border-radius: 50%; background: transparent;
+  color: #7f8b99; font-size: 19px; line-height: 1; cursor: pointer;
+}
+.command-remove:hover { border-color: #f87171; background: rgba(248,113,113,.1); color: #f87171; }
+.command-remove:disabled { cursor: wait; opacity: .45; }
 
 .react-calendar {
   width: 100%;

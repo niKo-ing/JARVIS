@@ -382,14 +382,14 @@ TOOL_DECLARATIONS = [
         "description": (
             "Controla cualquier navegador web. Úsalo para: abrir sitios web, buscar en la web, "
             "hacer clic en elementos, rellenar formularios, desplazarte, capturas de pantalla, navegación, cualquier tarea web. "
-            "Pasa siempre el parámetro 'browser' cuando el usuario especifique un navegador (ej. 'abrir en Edge', "
-            "'usa Firefox', 'abre Chrome'). Varios navegadores pueden ejecutarse simultáneamente."
+            "Usa Zen Browser por defecto para toda acción web. Pasa el parámetro 'browser' solamente cuando "
+            "el usuario pida explícitamente otro navegador. Varios navegadores pueden ejecutarse simultáneamente."
         ),
         "parameters": {
             "type": "OBJECT",
             "properties": {
                 "action":      {"type": "STRING", "description": "go_to | search | click | type | scroll | fill_form | smart_click | smart_type | get_text | get_url | press | new_tab | close_tab | screenshot | back | forward | reload | switch | list_browsers | close | close_all"},
-                "browser":     {"type": "STRING", "description": "Navegador destino: chrome | edge | firefox | opera | operagx | brave | vivaldi | safari. Omite para usar el navegador activo actual."},
+                "browser":     {"type": "STRING", "description": "Navegador destino: zen (predeterminado) | chrome | edge | firefox | opera | operagx | brave | vivaldi | safari."},
                 "url":         {"type": "STRING", "description": "URL para la acción go_to / new_tab"},
                 "query":       {"type": "STRING", "description": "Consulta de búsqueda para la acción search"},
                 "engine":      {"type": "STRING", "description": "Buscador: google | bing | duckduckgo | yandex (predeterminado: google)"},
@@ -876,7 +876,7 @@ class JarvisLive:
                     break
 
             self.set_speaking(True)
-            self.speak("Es un honor tenerlo de vuelta, señor. Bienvenido a casa.")
+            self.speak("Buenos días, señor.")
             threading.Thread(target=self._play_welcome_music, daemon=True).start()
             threading.Thread(target=self._open_terminal, daemon=True).start()
         finally:
@@ -894,28 +894,43 @@ class JarvisLive:
     @staticmethod
     def _play_welcome_music():
         import shutil, time
-        if shutil.which("playerctl") and shutil.which("spotify"):
+        track_uri = "spotify:track:08mG3Y1vljYA6bvDt4Wqkj"
+
+        if shutil.which("spotify"):
             try:
                 subprocess.Popen(
-                    ["spotify"],
+                    ["spotify", f"--uri={track_uri}"],
                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                 )
-                for _ in range(30):
-                    time.sleep(0.5)
-                    r = subprocess.run(
-                        ["playerctl", "-l"], capture_output=True, text=True, timeout=5,
-                    )
-                    if "spotify" in r.stdout.lower():
-                        break
-                subprocess.run(
-                    ["playerctl", "--player=spotify", "open",
-                     "spotify:track:08mG3Y1vljYA6bvDt4Wqkj"],
-                    timeout=10,
-                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                )
+                if shutil.which("playerctl"):
+                    for _ in range(30):
+                        time.sleep(0.5)
+                        players = subprocess.run(
+                            ["playerctl", "-l"], capture_output=True, text=True,
+                            timeout=5,
+                        )
+                        if "spotify" in players.stdout.lower():
+                            subprocess.run(
+                                ["playerctl", "--player=spotify", "play"],
+                                timeout=5, check=False,
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                            )
+                            break
                 return
-            except Exception:
-                pass
+            except Exception as exc:
+                print(f"[Clap] No se pudo abrir Spotify directamente: {exc}")
+
+        if shutil.which("xdg-open"):
+            try:
+                opened = subprocess.run(
+                    ["xdg-open", track_uri], timeout=10, check=False,
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                )
+                if opened.returncode == 0:
+                    return
+            except Exception as exc:
+                print(f"[Clap] No se pudo abrir el URI de Spotify: {exc}")
+
         if shutil.which("mpv"):
             try:
                 subprocess.Popen(
@@ -1203,15 +1218,17 @@ class JarvisLive:
             # Cooldown para evitar eco: no enviar mic recién después de hablar
             if time.time() - self._speaking_ended_at < 0.3:
                 return
+            try:
+                # Los aplausos deben seguir activos aunque el envío de voz esté
+                # bloqueado por PTT o por el modo de palabra de activación.
+                self._clap_detector.process(indata[:, 0])
+            except Exception:
+                pass
             if self.ptt_mode and not self.ptt_active:
                 return
             # En modo wake word, solo envía audio si el wake word fue detectado
             if self._wake_mode and not self.ptt_active:
                 return
-            try:
-                self._clap_detector.process(indata[:, 0])
-            except Exception:
-                pass
             data = indata.tobytes()
             loop.call_soon_threadsafe(
                 self.out_queue.put_nowait,

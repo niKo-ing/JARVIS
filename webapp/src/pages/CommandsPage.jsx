@@ -15,6 +15,7 @@ export default function CommandsPage() {
   const [text, setText] = useState('')
   const [commands, setCommands] = useState([])
   const [sending, setSending] = useState(false)
+  const [removingId, setRemovingId] = useState(null)
   const [message, setMessage] = useState('')
   const [editingRoutines, setEditingRoutines] = useState(false)
   const [routineName, setRoutineName] = useState('')
@@ -75,7 +76,7 @@ export default function CommandsPage() {
   }
 
   const statusText = {
-    pending: 'Pendiente', running: 'Ejecutando', completed: 'Completada', error: 'Error',
+    pending: 'Pendiente', running: 'Ejecutando', completed: 'Completada', error: 'Error', cancelled: 'Cancelada',
   }
 
   const addRoutine = event => {
@@ -95,6 +96,40 @@ export default function CommandsPage() {
 
   const removeRoutine = id => {
     setRoutines(current => current.filter(routine => routine.id !== id))
+  }
+
+  const dismissCommand = async item => {
+    const active = item.status === 'pending' || item.status === 'running'
+    const verb = active ? 'cancelar' : 'eliminar'
+    if (!window.confirm(`¿Quieres ${verb} esta orden?\n\n“${item.command}”`)) return
+
+    setRemovingId(item.id)
+    setMessage('')
+    let error
+    if (active) {
+      const metadata = {
+        status: 'cancelled',
+        result: 'Cancelada por el usuario',
+        finished_at: new Date().toISOString(),
+      }
+      ;({ error } = await supabase.from('tasks').update({
+        completed: true,
+        description: JSON.stringify(metadata),
+      }).eq('id', item.id))
+    } else {
+      ;({ error } = await supabase.from('tasks').delete().eq('id', item.id))
+    }
+    setRemovingId(null)
+
+    if (error) {
+      setMessage(`No se pudo ${verb}: ${error.message}`)
+      return
+    }
+    setCommands(current => active
+      ? current.map(command => command.id === item.id
+        ? { ...command, status: 'cancelled', result: 'Cancelada por el usuario', error: null }
+        : command)
+      : current.filter(command => command.id !== item.id))
   }
 
   return (
@@ -150,8 +185,14 @@ export default function CommandsPage() {
         {!commands.length && <p className="panel-empty">Aún no has enviado órdenes.</p>}
         {commands.map(item => (
           <article key={item.id}>
-            <div><b>{item.command}</b><small>{item.result || item.error || 'Esperando a Jarvis…'}</small></div>
+            <div className="command-copy"><b>{item.command}</b><small>{item.result || item.error || 'Esperando a Jarvis…'}</small></div>
             <span className={`command-status ${item.status}`}>{statusText[item.status] || item.status}</span>
+            <button className="command-remove" onClick={() => dismissCommand(item)}
+              disabled={removingId === item.id}
+              aria-label={`${item.status === 'pending' || item.status === 'running' ? 'Cancelar' : 'Eliminar'} orden: ${item.command}`}
+              title={item.status === 'pending' || item.status === 'running' ? 'Cancelar orden' : 'Eliminar del historial'}>
+              {removingId === item.id ? '…' : '×'}
+            </button>
           </article>
         ))}
       </div>
