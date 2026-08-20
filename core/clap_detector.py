@@ -76,10 +76,13 @@ class ClapDetector:
         except Exception:
             is_clap = False
 
-        rms = float(np.sqrt(np.mean(audio_data.astype(np.float64) ** 2)))
-        self.rms_history.append(rms)
-        if len(self.rms_history) > self.history_size:
-            self.rms_history.pop(0)
+        # La referencia debe representar solo el ruido ambiente. Incluir el
+        # primer aplauso puede multiplicar el umbral y ocultar el segundo.
+        if not is_clap:
+            rms = float(np.sqrt(np.mean(audio_data.astype(np.float64) ** 2)))
+            self.rms_history.append(rms)
+            if len(self.rms_history) > self.history_size:
+                self.rms_history.pop(0)
 
         if is_clap and (now - self.last_detected) > self.clap_cooldown:
             self.last_detected = now

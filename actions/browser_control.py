@@ -8,6 +8,7 @@ import platform
 import shutil
 import subprocess
 import threading
+from urllib.parse import quote_plus
 from pathlib import Path
 from typing import Optional
 
@@ -19,6 +20,7 @@ from playwright.async_api import (
     TimeoutError as PlaywrightTimeout,
 )
 _OS = platform.system()   # "Windows" | "Darwin" | "Linux"
+_DEFAULT_BROWSER = "zen"
 
 def _normalize_url(url: str) -> str:
     """
@@ -66,6 +68,7 @@ def _real_profile_dir(browser: str) -> str:
 
     if _OS == "Windows":
         m = {
+            "zen":      [cfg / "zen"],
             "chrome":   [Path(local) / "Google"          / "Chrome"          / "User Data"],
             "edge":     [Path(local) / "Microsoft"        / "Edge"            / "User Data"],
             "brave":    [Path(local) / "BraveSoftware"    / "Brave-Browser"   / "User Data"],
@@ -235,6 +238,9 @@ _BROWSER_SPECS: dict[str, dict] = {
         "safari":   {"engine": "webkit",   "channel": None,      "bins": []},
     },
     "Linux": {
+        # Zen es un fork de Firefox y Playwright no puede automatizar su binario
+        # directamente. Las navegaciones se abren de forma nativa más abajo.
+        "zen":      {"engine": "external", "channel": None, "bins": ["zen-browser", "zen"]},
         "chrome":   {"engine": "chromium", "channel": None,
                      "bins": ["google-chrome", "google-chrome-stable", "chromium-browser", "chromium"]},
         "edge":     {"engine": "chromium", "channel": None,
@@ -249,6 +255,10 @@ _BROWSER_SPECS: dict[str, dict] = {
 }
 
 _ALIASES: dict[str, str] = {
+    "zen browser":      "zen",
+    "zen-browser":      "zen",
+    "sen":              "zen",
+    "sen browser":      "zen",
     "google chrome":   "chrome",
     "google-chrome":   "chrome",
     "microsoft edge":  "edge",
@@ -308,6 +318,9 @@ def _resolve_browser(name: str) -> dict | None:
 
 
 def _detect_default_browser() -> str:
+    # Preferencia explícita del usuario: todas las acciones web parten desde Zen.
+    if _resolve_browser(_DEFAULT_BROWSER):
+        return _DEFAULT_BROWSER
     try:
         if _OS == "Windows":
             import winreg
@@ -341,7 +354,7 @@ def _detect_default_browser() -> str:
                     return kw
     except Exception:
         pass
-    return "chrome"
+    return _DEFAULT_BROWSER
 
 
 class _BrowserSession:
@@ -811,6 +824,34 @@ def browser_control(
     action  = params.get("action", "").lower().strip()
     browser = params.get("browser", "").lower().strip() or None
     result  = "Acción desconocida."
+
+    # Abrir URLs y búsquedas en el Zen ya instalado. Evita intentar arrancarlo
+    # como un Firefox de Playwright, operación que puede quedar bloqueada.
+    target_browser = _ALIASES.get((browser or _detect_default_browser()).lower().strip(),
+                                  (browser or _detect_default_browser()).lower().strip())
+    if target_browser == "zen" and action in {"go_to", "new_tab", "search"}:
+        if action == "search":
+            engine_urls = {
+                "google": "https://www.google.com/search?q=",
+                "bing": "https://www.bing.com/search?q=",
+                "duckduckgo": "https://duckduckgo.com/?q=",
+                "yandex": "https://yandex.com/search/?text=",
+            }
+            url = engine_urls.get(params.get("engine", "google"), engine_urls["google"]) + quote_plus(params.get("query", ""))
+        else:
+            url = _normalize_url(params.get("url", ""))
+        spec = _resolve_browser("zen")
+        executable = spec.get("exe") if spec else None
+        if not executable:
+            result = "No se encontró Zen Browser instalado."
+        else:
+            try:
+                subprocess.Popen([executable, url], start_new_session=True)
+                result = f"Abierto en Zen Browser: {url}"
+            except Exception as e:
+                result = f"No se pudo abrir Zen Browser: {e}"
+        _log(player, result)
+        return result
 
     if action == "switch":
         target = browser or params.get("target", "").lower().strip()
